@@ -330,15 +330,25 @@
                                 // 获取base64编码
                                 const base64 = canvas.toDataURL();
 
-                                Tesseract.recognize(
-                                    base64,
-                                    'chi_sim', // 加载中文语言包
-                                    {
-                                        logger: (m) => {
-                                            this.log[m.userJobId] = m;
-                                        },
-                                    }
-                                ).then(({ data: { text } }) => {
+                                const recognizeImage = async (imageUrl) => {
+                                    const worker = await Tesseract.createWorker(
+                                        {
+                                            workerPath: '/js/worker.min.js',
+                                            corePath:
+                                                '/js/tesseract-core.wasm.js',
+                                            langPath: '/js/langs/',
+                                            logger: (m) => {
+                                                this.log[m.userJobId] = m;
+                                            },
+                                        }
+                                    );
+                                    await worker.load();
+                                    await worker.loadLanguage('chi_sim');
+                                    await worker.initialize('chi_sim');
+                                    const {
+                                        data: { text },
+                                    } = await worker.recognize(imageUrl);
+                                    await worker.terminate();
                                     let arr = text.split('\n');
                                     arr = arr.filter((item) => {
                                         return !!item;
@@ -360,11 +370,13 @@
                                             if (index === arr.length - 1) {
                                                 tableData =
                                                     tableData.concat(data);
+
                                                 resolve(data);
                                             }
                                         }
                                     });
-                                });
+                                };
+                                await recognizeImage(base64);
 
                                 // 释放Mat对象
                                 roiMat.delete();
