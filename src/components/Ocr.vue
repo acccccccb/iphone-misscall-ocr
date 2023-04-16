@@ -78,7 +78,18 @@
                     striped
                 />
             </n-tab-pane>
-            <n-tab-pane name="origin" tab="原始数据">
+            <n-tab-pane name="json" tab="JSON">
+                <n-input
+                    style="text-align: left"
+                    :rows="19"
+                    :loading="loading"
+                    readonly
+                    type="textarea"
+                    v-model:value="tableDataStr"
+                    placeholder=""
+                ></n-input>
+            </n-tab-pane>
+            <n-tab-pane name="origin" tab="文本">
                 <n-input
                     style="text-align: left"
                     :rows="19"
@@ -485,6 +496,7 @@
                 this.fileList = [];
                 this.tableData = [];
                 this.log = {};
+                this.text = '';
             },
             downloadCsv() {
                 const tableData = [...this.tableData];
@@ -513,6 +525,9 @@
                 return Object.keys(this.log)
                     .filter((item) => this.log[item].progress !== 1)
                     .map((item) => this.log[item]);
+            },
+            tableDataStr() {
+                return JSON.stringify(this.tableData);
             },
         },
     };
