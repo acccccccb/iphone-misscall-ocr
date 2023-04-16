@@ -214,7 +214,7 @@
                     </n-gi>
                     <n-divider />
                     <n-gi span="24" style="margin-top: 10px">
-                        <div class="margin-bottom: 10px;">预设：</div>
+                        <div style="margin-bottom: 10px">预设：</div>
                         <div>
                             <n-space>
                                 <n-button
@@ -233,6 +233,7 @@
 </template>
 
 <script>
+    import { reactive } from 'vue';
     import Tesseract from 'tesseract.js';
     import { Archive } from '@vicons/ionicons5';
     import { useMessage } from 'naive-ui';
@@ -240,9 +241,24 @@
     export default {
         name: 'Ocr',
         setup() {
+            const config = {
+                width: 828,
+                height: 1792,
+                crop: {
+                    x1: 0,
+                    y1: 185,
+                    x2: 384,
+                    y2: 1388,
+                },
+                roi: {
+                    max: 180,
+                    replace: 255,
+                },
+            };
             let message = useMessage();
             return {
                 message,
+                config: reactive(config),
             };
         },
         components: {
@@ -250,20 +266,6 @@
         },
         data() {
             return {
-                config: {
-                    width: 828,
-                    height: 1792,
-                    crop: {
-                        x1: 0,
-                        y1: 185,
-                        x2: 384,
-                        y2: 1388,
-                    },
-                    roi: {
-                        max: 180,
-                        replace: 255,
-                    },
-                },
                 // 预设配置
                 defaultConfig: {
                     iPhone11: {
@@ -565,7 +567,16 @@
             },
             loadConfig(type) {
                 if (this.defaultConfig[type]) {
-                    this.config = { ...this.defaultConfig[type] };
+                    this.config.width = this.defaultConfig[type].width;
+                    this.config.height = this.defaultConfig[type].height;
+                    this.config.crop.x1 = this.defaultConfig[type].crop.x1;
+                    this.config.crop.y1 = this.defaultConfig[type].crop.y1;
+                    this.config.crop.x2 = this.defaultConfig[type].crop.x2;
+                    this.config.crop.y2 = this.defaultConfig[type].crop.y2;
+                    this.config.roi.max = this.defaultConfig[type].roi.max;
+                    this.config.roi.replace =
+                        this.defaultConfig[type].roi.replace;
+
                     this.message.success(`参数已设置为${type}`);
                 } else {
                     this.message.warning('配置不存在');
