@@ -6,7 +6,7 @@
             :show-file-list="true"
             list-type="image-card"
             v-model:file-list="fileList"
-            @update:file-list="handleFileListChange"
+            :custom-request="customRequest"
             @before-upload="beforeUpload"
             directory-dnd
             accept="image/*"
@@ -167,7 +167,7 @@
                             :min="0"
                             :max="config.width"
                         >
-                            <template #prefix>识别区域x1</template>
+                            <template #prefix>识别区坐标x</template>
                         </n-input-number>
                     </n-gi>
                     <n-gi :span="12">
@@ -181,7 +181,7 @@
                             :min="0"
                             :max="config.height"
                         >
-                            <template #prefix>识别区域y1</template>
+                            <template #prefix>识别区坐标y</template>
                         </n-input-number>
                     </n-gi>
                     <n-gi :span="12">
@@ -192,10 +192,10 @@
                             style="width: 100%"
                             size="large"
                             v-model:value="config.crop.x2"
-                            :min="config.crop.x1"
-                            :max="config.width"
+                            :min="0"
+                            :max="config.width - config.crop.x1"
                         >
-                            <template #prefix>识别区域x2</template>
+                            <template #prefix>识别区宽度</template>
                         </n-input-number>
                     </n-gi>
                     <n-gi :span="12">
@@ -206,11 +206,25 @@
                             style="width: 100%"
                             size="large"
                             v-model:value="config.crop.y2"
-                            :min="config.crop.y1"
-                            :max="config.height"
+                            :min="0"
+                            :max="config.height - config.crop.y1"
                         >
-                            <template #prefix>识别区域y2</template>
+                            <template #prefix>识别区高度</template>
                         </n-input-number>
+                    </n-gi>
+                    <n-divider />
+                    <n-gi span="24" style="margin-top: 10px">
+                        <div class="margin-bottom: 10px;">预设：</div>
+                        <div>
+                            <n-space>
+                                <n-button
+                                    type="primary"
+                                    @click="loadConfig('iPhone11')"
+                                >
+                                    iPhone11
+                                </n-button>
+                            </n-space>
+                        </div>
                     </n-gi>
                 </n-grid>
             </n-tab-pane>
@@ -248,6 +262,23 @@
                     roi: {
                         max: 180,
                         replace: 255,
+                    },
+                },
+                // 预设配置
+                defaultConfig: {
+                    iPhone11: {
+                        width: 828,
+                        height: 1792,
+                        crop: {
+                            x1: 0,
+                            y1: 185,
+                            x2: 384,
+                            y2: 1388,
+                        },
+                        roi: {
+                            max: 180,
+                            replace: 255,
+                        },
                     },
                 },
                 fileList: [],
@@ -316,50 +347,63 @@
                         const $image = new Image();
                         $image.onload = (res) => {
                             setTimeout(() => {
-                                const imgMat = cv.imread($image);
-                                // 将图片缩放至指定尺寸
-                                const resizedMat = new cv.Mat();
-                                const size = new cv.Size(
-                                    this.config.width,
-                                    this.config.height
-                                );
-                                cv.resize(
-                                    imgMat,
-                                    resizedMat,
-                                    size,
-                                    0,
-                                    0,
-                                    cv.INTER_AREA
-                                );
-                                // 裁剪指定区域
-                                const rect = new cv.Rect(
-                                    this.config.crop.x1,
-                                    this.config.crop.y1,
-                                    this.config.crop.x2,
-                                    this.config.crop.y2
-                                );
-                                const roiMat = resizedMat.roi(rect);
-                                // 二值化
-                                cv.cvtColor(roiMat, roiMat, cv.COLOR_RGBA2GRAY);
-                                cv.threshold(
-                                    roiMat,
-                                    roiMat,
-                                    this.config.roi.max,
-                                    this.config.roi.replace,
-                                    cv.THRESH_BINARY
-                                );
+                                try {
+                                    const imgMat = cv.imread($image);
+                                    // 将图片缩放至指定尺寸
+                                    const resizedMat = new cv.Mat();
+                                    const size = new cv.Size(
+                                        this.config.width,
+                                        this.config.height
+                                    );
+                                    cv.resize(
+                                        imgMat,
+                                        resizedMat,
+                                        size,
+                                        0,
+                                        0,
+                                        cv.INTER_AREA
+                                    );
+                                    // 裁剪指定区域
+                                    const rect = new cv.Rect(
+                                        this.config.crop.x1,
+                                        this.config.crop.y1,
+                                        this.config.crop.x2,
+                                        this.config.crop.y2
+                                    );
+                                    const roiMat = resizedMat.roi(rect);
+                                    // 二值化
+                                    cv.cvtColor(
+                                        roiMat,
+                                        roiMat,
+                                        cv.COLOR_RGBA2GRAY
+                                    );
+                                    cv.threshold(
+                                        roiMat,
+                                        roiMat,
+                                        this.config.roi.max,
+                                        this.config.roi.replace,
+                                        cv.THRESH_BINARY
+                                    );
 
-                                const canvas = document.createElement('canvas');
-                                const ctx = canvas.getContext('2d');
-                                // 在画布上显示图像
-                                cv.imshow(canvas, roiMat);
-                                // 释放Mat对象
-                                roiMat.delete();
-                                resizedMat.delete();
-                                imgMat.delete();
-                                // 获取base64编码
-                                const base64 = canvas.toDataURL();
-                                resolve(base64);
+                                    const canvas =
+                                        document.createElement('canvas');
+                                    const ctx = canvas.getContext('2d');
+                                    // 在画布上显示图像
+                                    cv.imshow(canvas, roiMat);
+                                    // 释放Mat对象
+                                    roiMat.delete();
+                                    resizedMat.delete();
+                                    imgMat.delete();
+                                    // 获取base64编码
+                                    const base64 = canvas.toDataURL();
+                                    resolve(base64);
+                                } catch (e) {
+                                    console.log(e);
+                                    this.message.warning(
+                                        `Opencv error: ${e.toString()}, 请检查参数`
+                                    );
+                                    resolve(false);
+                                }
                             }, 50);
                         };
                         $image.src = e.target.result;
@@ -367,7 +411,7 @@
                     reader.readAsDataURL(file);
                 });
             },
-            handleFileListChange() {
+            customRequest() {
                 if (this.loadImgTimmer) {
                     clearTimeout(this.loadImgTimmer);
                 }
@@ -518,6 +562,14 @@
                 link.download = 'miss-call.csv';
                 link.href = window.URL.createObjectURL(blob);
                 link.click();
+            },
+            loadConfig(type) {
+                if (this.defaultConfig[type]) {
+                    this.config = { ...this.defaultConfig[type] };
+                    this.message.success(`参数已设置为${type}`);
+                } else {
+                    this.message.warning('配置不存在');
+                }
             },
         },
         computed: {
