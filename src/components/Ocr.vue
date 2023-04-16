@@ -333,10 +333,10 @@
                                 const recognizeImage = async (imageUrl) => {
                                     const worker = await Tesseract.createWorker(
                                         {
-                                            workerPath: '/js/worker.min.js',
+                                            workerPath: 'js/worker.min.js',
                                             corePath:
-                                                '/js/tesseract-core.wasm.js',
-                                            langPath: '/js/langs/',
+                                                'js/tesseract-core.wasm.js',
+                                            langPath: 'langs/',
                                             logger: (m) => {
                                                 this.log[m.userJobId] = m;
                                             },
