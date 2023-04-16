@@ -9,17 +9,16 @@
 <template>
     <n-config-provider :theme="darkTheme">
         <n-layout content-style="min-height: 100vh">
-            <n-layout-header class="header"
-                >iphone-misscall-ocr</n-layout-header
+            <n-layout-header class="header">
+                iphone-misscall-ocr
+            </n-layout-header>
+            <n-layout-content
+                class="content"
+                content-style="width: 100%;height: calc(100vh - 130px);padding: 10px;"
+                :native-scrollbar="false"
             >
-            <n-layout-content class="content" content-style="width: 100%;">
-                <n-grid
-                    x-gap="10"
-                    :y-gap="10"
-                    :cols="24"
-                    style="text-align: center"
-                >
-                    <n-gi :span="20" :offset="2">
+                <n-grid x-gap="10" :y-gap="10" :cols="24">
+                    <n-gi :span="24">
                         <n-message-provider>
                             <Ocr />
                         </n-message-provider>
@@ -44,7 +43,6 @@
         </n-layout>
     </n-config-provider>
 </template>
-<script></script>
 
 <style>
     #app {
@@ -64,13 +62,13 @@
         line-height: 80px;
         height: 80px;
         text-align: center;
-        font-size: 2em;
+        font-size: 1.6em;
     }
     .content {
         min-height: calc(100vh - 130px);
         display: flex;
         justify-content: center;
-        align-items: center;
+        /*align-items: center;*/
     }
     .footer {
         line-height: 50px;

@@ -1,29 +1,64 @@
 <template>
-    <div>
-        <n-grid style="margin-top: 30px" x-gap="24">
-            <n-gi :span="8">
-                <n-scrollbar style="height: calc(100vh - 400px)">
-                    <n-upload
-                        :disabled="loading === true"
-                        multiple
-                        :show-file-list="true"
-                        list-type="image-card"
-                        v-model:file-list="fileList"
-                        @update:file-list="handleFileListChange"
-                        directory-dnd
-                        accept="image/*"
-                        :custom-request="customRequest"
-                    >
-                    </n-upload>
-                </n-scrollbar>
-            </n-gi>
+    <n-gi :span="24">
+        <n-upload
+            :disabled="loading === true"
+            multiple
+            :show-file-list="true"
+            list-type="image-card"
+            v-model:file-list="fileList"
+            @update:file-list="handleFileListChange"
+            @before-upload="beforeUpload"
+            directory-dnd
+            accept="image/*"
+        >
+        </n-upload>
+    </n-gi>
+    <n-gi :span="24" style="margin-top: 10px">
+        <n-spin description="图片预处理" :show="imageReaderLoading">
+            <n-space align="center" justify="center">
+                <n-button
+                    :loading="loading"
+                    type="error"
+                    :disabled="fileList.length === 0"
+                    @click="startOcr"
+                >
+                    识别
+                </n-button>
 
-            <n-gi :span="16">
+                <n-button
+                    tertiary
+                    type="default"
+                    :disabled="fileList.length === 0 || loading === true"
+                    @click="clear"
+                >
+                    清空
+                </n-button>
+                <div v-if="loading === true">
+                    线程数：{{ Object.keys(log).length }}
+                </div>
+            </n-space>
+        </n-spin>
+    </n-gi>
+    <n-divider />
+    <n-gi :span="24" style="height: calc(100vh - 400px)">
+        <n-tabs size="large" type="line" animated justify-content="start">
+            <template #suffix>
+                <n-space justify="end">
+                    <n-button
+                        type="primary"
+                        :disabled="tableData.length === 0"
+                        @click="downloadCsv"
+                        >下载csv
+                    </n-button>
+                </n-space>
+            </template>
+            <n-tab-pane name="before" tab="解析后">
                 <n-data-table
                     v-if="loading === true"
                     size="small"
-                    style="height: calc(100vh - 400px)"
-                    max-height="calc(100vh - 400px)"
+                    style="height: 100%"
+                    max-height="height: 100%"
+                    :scroll-x="200"
                     :columns="logColumns"
                     :data="logData"
                     :pagination="false"
@@ -33,8 +68,8 @@
                 <n-data-table
                     v-else
                     size="small"
-                    style="height: calc(100vh - 400px)"
-                    max-height="calc(100vh - 400px)"
+                    style="height: 100%"
+                    max-height="height: 100%"
                     :loading="loading"
                     :columns="columns"
                     :data="tableData"
@@ -42,134 +77,134 @@
                     :bordered="true"
                     striped
                 />
-            </n-gi>
-            <n-gi :span="24" style="margin-top: 30px">
-                <n-space align="center">
-                    <n-button
-                        :loading="loading"
-                        size="large"
-                        type="error"
-                        :disabled="fileList.length === 0"
-                        @click="startOcr"
-                        >识别
-                    </n-button>
-                    <n-button
-                        size="large"
-                        type="primary"
-                        secondary
-                        :disabled="tableData.length === 0"
-                        @click="downloadCsv"
-                        >下载csv
-                    </n-button>
-                    <n-button
-                        tertiary
-                        size="large"
-                        type="default"
-                        :disabled="fileList.length === 0 || loading === true"
-                        @click="clear"
-                    >
-                        清空
-                    </n-button>
-                    <div v-if="loading === true">
-                        线程数：{{ Object.keys(log).length }}
-                    </div>
-                </n-space>
-            </n-gi>
-            <n-gi :span="24" style="margin-top: 30px; margin-bottom: 30px">
-                <n-space align="center">
-                    <n-input-number
-                        :step="1"
-                        :precision="0"
-                        style="width: 200px"
-                        size="large"
-                        v-model:value="config.width"
-                        :min="0"
-                    >
-                        <template #prefix>截图宽度</template>
-                    </n-input-number>
-                    <n-input-number
-                        :step="1"
-                        :precision="0"
-                        style="width: 200px"
-                        size="large"
-                        v-model:value="config.height"
-                        :min="0"
-                    >
-                        <template #prefix>截图高度</template>
-                    </n-input-number>
-
-                    <n-input-number
-                        :step="1"
-                        :precision="0"
-                        style="width: 200px"
-                        size="large"
-                        v-model:value="config.roi.max"
-                        :min="0"
-                        :max="255"
-                    >
-                        <template #prefix>二值化阙值</template>
-                    </n-input-number>
-                    <n-input-number
-                        :step="1"
-                        :precision="0"
-                        style="width: 200px"
-                        size="large"
-                        v-model:value="config.roi.replace"
-                        :min="0"
-                        :max="255"
-                    >
-                        <template #prefix>替换颜色</template>
-                    </n-input-number>
-                </n-space>
-                <n-space style="margin-top: 10px">
-                    <n-input-number
-                        :step="1"
-                        :precision="0"
-                        style="width: 200px"
-                        size="large"
-                        v-model:value="config.crop.x1"
-                        :min="0"
-                        :max="config.width"
-                    >
-                        <template #prefix>识别区域x1</template>
-                    </n-input-number>
-                    <n-input-number
-                        :step="1"
-                        :precision="0"
-                        style="width: 200px"
-                        size="large"
-                        v-model:value="config.crop.y1"
-                        :min="0"
-                        :max="config.height"
-                    >
-                        <template #prefix>识别区域y1</template>
-                    </n-input-number>
-                    <n-input-number
-                        :step="1"
-                        :precision="0"
-                        style="width: 200px"
-                        size="large"
-                        v-model:value="config.crop.x2"
-                        :min="config.crop.x1"
-                        :max="config.width"
-                    >
-                        <template #prefix>识别区域x2</template>
-                    </n-input-number>
-                    <n-input-number
-                        :step="1"
-                        :precision="0"
-                        style="width: 200px"
-                        size="large"
-                        v-model:value="config.crop.y2"
-                        :min="config.crop.y1"
-                        :max="config.height"
-                    >
-                        <template #prefix>识别区域y2</template>
-                    </n-input-number>
-                </n-space>
-            </n-gi>
-        </n-grid>
-    </div>
+            </n-tab-pane>
+            <n-tab-pane name="origin" tab="原始数据">
+                <n-input
+                    style="text-align: left"
+                    :rows="19"
+                    :loading="loading"
+                    readonly
+                    type="textarea"
+                    v-model:value="text"
+                    placeholder=""
+                ></n-input>
+            </n-tab-pane>
+            <n-tab-pane name="option" tab="设置">
+                <n-grid :x-gap="12" :y-gap="10">
+                    <n-gi span="12">
+                        <n-input-number
+                            :disabled="loading"
+                            :step="1"
+                            :precision="0"
+                            style="width: 100%"
+                            size="large"
+                            v-model:value="config.width"
+                            :min="0"
+                        >
+                            <template #prefix>截图宽度</template>
+                        </n-input-number>
+                    </n-gi>
+                    <n-gi :span="12">
+                        <n-input-number
+                            :disabled="loading"
+                            :step="1"
+                            :precision="0"
+                            style="width: 100%"
+                            size="large"
+                            v-model:value="config.height"
+                            :min="0"
+                        >
+                            <template #prefix>截图高度</template>
+                        </n-input-number>
+                    </n-gi>
+                    <n-gi :span="12">
+                        <n-input-number
+                            :disabled="loading"
+                            :step="1"
+                            :precision="0"
+                            style="width: 100%"
+                            size="large"
+                            v-model:value="config.roi.max"
+                            :min="0"
+                            :max="255"
+                        >
+                            <template #prefix>二值化阙值</template>
+                        </n-input-number>
+                    </n-gi>
+                    <n-gi :span="12">
+                        <n-input-number
+                            :disabled="loading"
+                            :step="1"
+                            :precision="0"
+                            style="width: 100%"
+                            size="large"
+                            v-model:value="config.roi.replace"
+                            :min="0"
+                            :max="255"
+                        >
+                            <template #prefix>替换颜色</template>
+                        </n-input-number>
+                    </n-gi>
+                    <n-gi :span="12">
+                        <n-input-number
+                            :disabled="loading"
+                            :step="1"
+                            :precision="0"
+                            style="width: 100%"
+                            size="large"
+                            v-model:value="config.crop.x1"
+                            :min="0"
+                            :max="config.width"
+                        >
+                            <template #prefix>识别区域x1</template>
+                        </n-input-number>
+                    </n-gi>
+                    <n-gi :span="12">
+                        <n-input-number
+                            :disabled="loading"
+                            :step="1"
+                            :precision="0"
+                            style="width: 100%"
+                            size="large"
+                            v-model:value="config.crop.y1"
+                            :min="0"
+                            :max="config.height"
+                        >
+                            <template #prefix>识别区域y1</template>
+                        </n-input-number>
+                    </n-gi>
+                    <n-gi :span="12">
+                        <n-input-number
+                            :disabled="loading"
+                            :step="1"
+                            :precision="0"
+                            style="width: 100%"
+                            size="large"
+                            v-model:value="config.crop.x2"
+                            :min="config.crop.x1"
+                            :max="config.width"
+                        >
+                            <template #prefix>识别区域x2</template>
+                        </n-input-number>
+                    </n-gi>
+                    <n-gi :span="12">
+                        <n-input-number
+                            :disabled="loading"
+                            :step="1"
+                            :precision="0"
+                            style="width: 100%"
+                            size="large"
+                            v-model:value="config.crop.y2"
+                            :min="config.crop.y1"
+                            :max="config.height"
+                        >
+                            <template #prefix>识别区域y2</template>
+                        </n-input-number>
+                    </n-gi>
+                </n-grid>
+            </n-tab-pane>
+        </n-tabs>
+    </n-gi>
 </template>
 
 <script>
@@ -206,6 +241,7 @@
                 },
                 fileList: [],
                 loading: false,
+                imageReaderLoading: false,
                 columns: [
                     {
                         title: '#',
@@ -230,6 +266,7 @@
                 ],
                 tableData: [],
                 log: {},
+                text: '',
                 logColumns: [
                     {
                         title: '#',
@@ -257,6 +294,7 @@
                         key: 'status',
                     },
                 ],
+                loadImgTimmer: null,
             };
         },
         methods: {
@@ -267,28 +305,6 @@
                         const $image = new Image();
                         $image.onload = (res) => {
                             setTimeout(() => {
-                                resolve($image);
-                            }, 50);
-                        };
-                        $image.src = e.target.result;
-                    };
-                    reader.readAsDataURL(file);
-                });
-            },
-            handleFileListChange(fileList) {
-                this.fileList = fileList;
-            },
-            startOcr() {
-                this.loading = true;
-                this.tableData = [];
-                this.log = {};
-                let tableData = [];
-                Promise.all(
-                    this.fileList.map((item) => {
-                        return new Promise(async (resolve) => {
-                            const $image = await this.readImg(item.file);
-                            $image.name = item.file.name;
-                            if ($image) {
                                 const imgMat = cv.imread($image);
                                 // 将图片缩放至指定尺寸
                                 const resizedMat = new cv.Mat();
@@ -326,10 +342,70 @@
                                 const ctx = canvas.getContext('2d');
                                 // 在画布上显示图像
                                 cv.imshow(canvas, roiMat);
-
+                                // 释放Mat对象
+                                roiMat.delete();
+                                resizedMat.delete();
+                                imgMat.delete();
                                 // 获取base64编码
                                 const base64 = canvas.toDataURL();
-
+                                resolve(base64);
+                            }, 50);
+                        };
+                        $image.src = e.target.result;
+                    };
+                    reader.readAsDataURL(file);
+                });
+            },
+            handleFileListChange() {
+                if (this.loadImgTimmer) {
+                    clearTimeout(this.loadImgTimmer);
+                }
+                this.loadImgTimmer = setTimeout(() => {
+                    Promise.all(
+                        this.fileList.map((item) => {
+                            return new Promise(async (resolve) => {
+                                if (
+                                    item.status !== 'finished' &&
+                                    item.status !== 'uploading'
+                                ) {
+                                    this.imageReaderLoading = true;
+                                    item.status = 'uploading';
+                                    item.percentage = 0;
+                                    const base64 = await this.readImg(
+                                        item.file
+                                    );
+                                    if (base64) {
+                                        item.url = base64;
+                                        item.status = 'finished';
+                                        item.percentage = 100;
+                                        resolve();
+                                    } else {
+                                        item.status = 'error';
+                                        item.percentage = 0;
+                                        resolve();
+                                    }
+                                } else {
+                                    resolve();
+                                }
+                            });
+                        })
+                    ).then(() => {
+                        this.imageReaderLoading = false;
+                    });
+                }, 50);
+            },
+            startOcr() {
+                this.loading = true;
+                this.tableData = [];
+                this.log = {};
+                this.text = '';
+                let tableData = [];
+                Promise.all(
+                    this.fileList.map((item) => {
+                        return new Promise(async (resolve, reject) => {
+                            const base64 = item.url;
+                            const fileName = item.name;
+                            if (base64) {
                                 const recognizeImage = async (imageUrl) => {
                                     const worker = await Tesseract.createWorker(
                                         {
@@ -342,13 +418,20 @@
                                             },
                                         }
                                     );
-                                    await worker.load();
+                                    // await worker.load();
                                     await worker.loadLanguage('chi_sim');
                                     await worker.initialize('chi_sim');
                                     const {
                                         data: { text },
                                     } = await worker.recognize(imageUrl);
                                     await worker.terminate();
+
+                                    if (!text) {
+                                        this.message.warning('未识别到文字');
+                                        resolve();
+                                        return;
+                                    }
+                                    this.text += text;
                                     let arr = text.split('\n');
                                     arr = arr.filter((item) => {
                                         return !!item;
@@ -358,12 +441,12 @@
                                     );
                                     const data = [];
                                     let obj = {};
-                                    arr.forEach((item, index) => {
+                                    arr.forEach((arrItem, index) => {
                                         if (index % 2 === 0) {
-                                            obj.concat = item;
+                                            obj.concat = arrItem;
                                         } else {
-                                            obj.locale = item;
-                                            obj.image = $image.name;
+                                            obj.locale = arrItem;
+                                            obj.image = fileName;
                                             data.push(obj);
                                             obj = {};
 
@@ -377,21 +460,27 @@
                                     });
                                 };
                                 await recognizeImage(base64);
-
-                                // 释放Mat对象
-                                roiMat.delete();
-                                resizedMat.delete();
-                                imgMat.delete();
+                            } else {
+                                resolve();
                             }
                         });
                     })
                 ).then(() => {
                     this.loading = false;
-                    // this.log = {};
+                    this.log = {};
                     this.tableData = tableData;
                 });
             },
-            async customRequest(e) {},
+            async beforeUpload(e) {
+                const finder = this.fileList.find(
+                    (item) => item.fullPath === e.file.fullPath
+                );
+                if (finder) {
+                    return false;
+                }
+
+                return true;
+            },
             clear() {
                 this.fileList = [];
                 this.tableData = [];
